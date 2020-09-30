@@ -4,9 +4,7 @@
  * original:
  * http://www.onicos.com/staff/iz/amuse/javascript/expert/inflate.txt
  */
-
 (function(){
-
 /* Copyright (C) 1999 Masanao Izumo <iz@onicos.co.jp>
  * Version: 1.0.0.1
  * LastModified: Dec 25 1999
@@ -33,7 +31,7 @@ var zip_slide;
 var zip_wp;			// current position in slide
 var zip_fixed_tl = null;	// inflate static
 var zip_fixed_td;		// inflate static
-var zip_fixed_bl, fixed_bd;	// inflate static
+var zip_fixed_bl, zip_fixed_bd;	// inflate static
 var zip_bit_buf;		// bit buffer
 var zip_bit_len;		// bits in bit buffer
 var zip_method;
@@ -48,56 +46,63 @@ var zip_inflate_pos;
 
 
 /* constant tables (inflate) */
-var zip_MASK_BITS = new Array(
+var zip_MASK_BITS = [
     0x0000,
     0x0001, 0x0003, 0x0007, 0x000f, 0x001f, 0x003f, 0x007f, 0x00ff,
-    0x01ff, 0x03ff, 0x07ff, 0x0fff, 0x1fff, 0x3fff, 0x7fff, 0xffff);
+    0x01ff, 0x03ff, 0x07ff, 0x0fff, 0x1fff, 0x3fff, 0x7fff, 0xffff];
 // Tables for deflate from PKZIP's appnote.txt.
-var zip_cplens = new Array( // Copy lengths for literal codes 257..285
+var zip_cplens = [ // Copy lengths for literal codes 257..285
     3, 4, 5, 6, 7, 8, 9, 10, 11, 13, 15, 17, 19, 23, 27, 31,
-    35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0);
+    35, 43, 51, 59, 67, 83, 99, 115, 131, 163, 195, 227, 258, 0, 0];
 /* note: see note #13 above about the 258 in this list. */
-var zip_cplext = new Array( // Extra bits for literal codes 257..285
+var zip_cplext = [ // Extra bits for literal codes 257..285
     0, 0, 0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 2, 2, 2, 2,
-    3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 99, 99); // 99==invalid
-var zip_cpdist = new Array( // Copy offsets for distance codes 0..29
+    3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5, 0, 99, 99]; // 99==invalid
+var zip_cpdist = [ // Copy offsets for distance codes 0..29
     1, 2, 3, 4, 5, 7, 9, 13, 17, 25, 33, 49, 65, 97, 129, 193,
     257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145,
-    8193, 12289, 16385, 24577);
-var zip_cpdext = new Array( // Extra bits for distance codes
+    8193, 12289, 16385, 24577];
+var zip_cpdext = [ // Extra bits for distance codes
     0, 0, 0, 0, 1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 6,
     7, 7, 8, 8, 9, 9, 10, 10, 11, 11,
-    12, 12, 13, 13);
-var zip_border = new Array(  // Order of the bit length code lengths
-    16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15);
+    12, 12, 13, 13];
+var zip_border = [  // Order of the bit length code lengths
+    16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15];
 /* objects (inflate) */
 
-var zip_HuftList = function() {
-    this.next = null;
-    this.list = null;
+function zip_HuftList() {
+    return {
+        next : null,
+        list : null
+    }
 }
 
-var zip_HuftNode = function() {
-    this.e = 0; // number of extra bits or operation
-    this.b = 0; // number of bits in this code or subcode
-
-    // union
-    this.n = 0; // literal, length base, or distance base
-    this.t = null; // (zip_HuftNode) pointer to next level of table
+function zip_HuftNode() {
+    return {
+        e : 0, // number of extra bits or operation
+        b : 0, // number of bits in this code or subcode
+        // union
+        n : 0, // literal, length base, or distance base
+        t : null // (zip_HuftNode) pointer to next level of table
+    };
 }
 
-var zip_HuftBuild = function(b,	// code lengths in bits (all assumed <= BMAX)
+function zip_HuftBuild(
+               b,	// code lengths in bits (all assumed <= BMAX)
 		       n,	// number of codes (assumed <= N_MAX)
 		       s,	// number of simple-valued codes (0..s-1)
 		       d,	// list of base values for non-simple codes
 		       e,	// list of extra bits for non-simple codes
 		       mm	// maximum lookup bits
 		   ) {
-    this.BMAX = 16;   // maximum bit length of any code
-    this.N_MAX = 288; // maximum number of codes in any set
-    this.status = 0;	// 0: success, 1: incomplete table, 2: bad input
-    this.root = null;	// (zip_HuftList) starting table
-    this.m = 0;		// maximum lookup bits, returns actual
+    var _BMAX = 16,   // maximum bit length of any code
+        _N_MAX = 288; // maximum number of codes in any set
+    
+    var huft = {
+        /* this.status = 0;	// 0: success, 1: incomplete table, 2: bad input
+        this.root = null;	// (zip_HuftList) starting table
+        this.m = 0;		// maximum lookup bits, returns actual */
+    };
 
 /* Given a list of code lengths and a maximum table size, make a set of
    tables to decode that set of codes.	Return zero on success, one if
@@ -107,9 +112,9 @@ var zip_HuftBuild = function(b,	// code lengths in bits (all assumed <= BMAX)
    The code with value 256 is special, and the tables are constructed
    so that no bits beyond that code are fetched when that code is
    decoded. */
-    {
+    // {
 	var a;			// counter for codes of length k
-	var c = new Array(this.BMAX+1);	// bit length count table
+	var c = []; // new Array(_BMAX+1);	// bit length count table
 	var el;			// length of EOB code (value 256)
 	var f;			// i repeats in table every f entries
 	var g;			// maximum code length
@@ -117,35 +122,36 @@ var zip_HuftBuild = function(b,	// code lengths in bits (all assumed <= BMAX)
 	var i;			// counter, current code
 	var j;			// counter
 	var k;			// number of bits in current code
-	var lx = new Array(this.BMAX+1);	// stack of bits per table
+	var lx = []; // new Array(_BMAX+1);	// stack of bits per table
 	var p;			// pointer into c[], b[], or v[]
 	var pidx;		// index of p
 	var q;			// (zip_HuftNode) points to current table
-	var r = new zip_HuftNode(); // table entry for structure assignment
-	var u = new Array(this.BMAX); // zip_HuftNode[BMAX][]  table stack
-	var v = new Array(this.N_MAX); // values in order of bit length
+	var r = zip_HuftNode(); // table entry for structure assignment
+	var u = []; // new Array(_BMAX); // zip_HuftNode[BMAX][]  table stack
+	var v = []; // new Array(_N_MAX); // values in order of bit length
 	var w;
-	var x = new Array(this.BMAX+1);// bit offsets, then code stack
+	var x = []; // new Array(_BMAX+1);// bit offsets, then code stack
 	var xp;			// pointer into x or c
 	var y;			// number of dummy codes added
 	var z;			// number of entries in current table
 	var o;
 	var tail;		// (zip_HuftList)
 
-	tail = this.root = null;
-	for(i = 0; i < c.length; i++)
-	    c[i] = 0;
-	for(i = 0; i < lx.length; i++)
-	    lx[i] = 0;
-	for(i = 0; i < u.length; i++)
+    tail = huft.root = null;
+
+	for(i = 0; i < _BMAX+1; ++i){
+        c[i] = 0;
+        lx[i] = 0;
+        x[i] = 0;
+    };
+
+	for(i = 0; i < _BMAX; ++i)
 	    u[i] = null;
-	for(i = 0; i < v.length; i++)
+	for(i = 0; i < _N_MAX; ++i)
 	    v[i] = 0;
-	for(i = 0; i < x.length; i++)
-	    x[i] = 0;
 
 	// Generate counts for each bit length
-	el = n > 256 ? b[256] : this.BMAX; // set length of EOB code, if any
+	el = n > 256 ? b[256] : _BMAX; // set length of EOB code, if any
 	p = b; pidx = 0;
 	i = n;
 	do {
@@ -153,20 +159,20 @@ var zip_HuftBuild = function(b,	// code lengths in bits (all assumed <= BMAX)
 	    pidx++;
 	} while(--i > 0);
 	if(c[0] == n) {	// null input--all zero length codes
-	    this.root = null;
-	    this.m = 0;
-	    this.status = 0;
-	    return;
+	    //huft.root = null;
+	    huft.m = 0;
+	    huft.status = 0;
+	    return huft;
 	}
 
 	// Find minimum and maximum length, bound *m by those
-	for(j = 1; j <= this.BMAX; j++)
+	for(j = 1; j <= _BMAX; ++j)
 	    if(c[j] != 0)
 		break;
 	k = j;			// minimum code length
 	if(mm < j)
 	    mm = j;
-	for(i = this.BMAX; i != 0; i--)
+	for(i = _BMAX; i != 0; i--)
 	    if(c[i] != 0)
 		break;
 	g = i;			// maximum code length
@@ -174,16 +180,16 @@ var zip_HuftBuild = function(b,	// code lengths in bits (all assumed <= BMAX)
 	    mm = i;
 
 	// Adjust last length count to fill out codes, if needed
-	for(y = 1 << j; j < i; j++, y <<= 1)
+	for(y = 1 << j; j < i; ++j, y <<= 1)
 	    if((y -= c[j]) < 0) {
-		this.status = 2;	// bad input: more codes than bits
-		this.m = mm;
-		return;
+		huft.status = 2;	// bad input: more codes than bits
+		huft.m = mm;
+		return huft;
 	    }
 	if((y -= c[i]) < 0) {
-	    this.status = 2;
-	    this.m = mm;
-	    return;
+	    huft.status = 2;
+	    huft.m = mm;
+	    return huft;
 	}
 	c[i] += y;
 
@@ -240,15 +246,15 @@ var zip_HuftBuild = function(b,	// code lengths in bits (all assumed <= BMAX)
 		    lx[1 + h] = j; // set table size in stack
 
 		    // allocate and link in new table
-		    q = new Array(z);
+		    q = []; // new Array(z);
 		    for(o = 0; o < z; o++) {
-			q[o] = new zip_HuftNode();
+			q[o] = zip_HuftNode();
 		    }
 
 		    if(tail == null)
-			tail = this.root = new zip_HuftList();
+			tail = huft.root = {}; // zip_HuftList();
 		    else
-			tail = tail.next = new zip_HuftList();
+			tail = tail.next = {}; // zip_HuftList();
 		    tail.next = null;
 		    tail.list = q;
 		    u[h] = q;	// table starts after link
@@ -302,11 +308,13 @@ var zip_HuftBuild = function(b,	// code lengths in bits (all assumed <= BMAX)
 	}
 
 	/* return actual size of base table */
-	this.m = lx[1];
+	huft.m = lx[1];
 
 	/* Return true (1) if we were given an incomplete table */
-	this.status = ((y != 0 && g != 1) ? 1 : 0);
-    } /* end of constructor */
+    huft.status = ((y != 0 && g != 1) ? 1 : 0);
+    
+    return huft;
+    // } /* end of constructor */
 }
 
 
@@ -459,21 +467,21 @@ var zip_inflate_fixed = function(buff, off, size) {
     // if first time, set up tables for fixed blocks
     if(zip_fixed_tl == null) {
 	var i;			// temporary variable
-	var l = new Array(288);	// length list for huft_build
+	var l = []; // new Array(288);	// length list for huft_build
 	var h;	// zip_HuftBuild
 
 	// literal table
-	for(i = 0; i < 144; i++)
+	for(i = 0; i < 144; ++i)
 	    l[i] = 8;
-	for(; i < 256; i++)
+	for(; i < 256; ++i)
 	    l[i] = 9;
-	for(; i < 280; i++)
+	for(; i < 280; ++i)
 	    l[i] = 7;
-	for(; i < 288; i++)	// make a complete, but wrong code set
+	for(; i < 288; ++i)	// make a complete, but wrong code set
 	    l[i] = 8;
 	zip_fixed_bl = 7;
 
-	h = new zip_HuftBuild(l, 288, 257, zip_cplens, zip_cplext,
+	h = zip_HuftBuild(l, 288, 257, zip_cplens, zip_cplext,
 			      zip_fixed_bl);
 	if(h.status != 0) {
 	    alert("HufBuild error: "+h.status);
@@ -483,11 +491,11 @@ var zip_inflate_fixed = function(buff, off, size) {
 	zip_fixed_bl = h.m;
 
 	// distance table
-	for(i = 0; i < 30; i++)	// make an incomplete code set
+	for(i = 0; i < 30; ++i)	// make an incomplete code set
 	    l[i] = 5;
 	zip_fixed_bd = 5;
 
-	h = new zip_HuftBuild(l, 30, 0, zip_cpdist, zip_cpdext, zip_fixed_bd);
+	h = zip_HuftBuild(l, 30, 0, zip_cpdist, zip_cpdext, zip_fixed_bd);
 	if(h.status > 1) {
 	    zip_fixed_tl = null;
 	    alert("HufBuild error: "+h.status);
@@ -514,10 +522,10 @@ var zip_inflate_dynamic = function(buff, off, size) {
     var nb;		// number of bit length codes
     var nl;		// number of literal/length codes
     var nd;		// number of distance codes
-    var ll = new Array(286+30); // literal/length and distance code lengths
+    var ll = []; //new Array(286+30); // literal/length and distance code lengths
     var h;		// (zip_HuftBuild)
 
-    for(i = 0; i < ll.length; i++)
+    for(i = 0; i < 286+30; ++i)
 	ll[i] = 0;
 
     // read in table lengths
@@ -534,18 +542,18 @@ var zip_inflate_dynamic = function(buff, off, size) {
       return -1;		// bad lengths
 
     // read in bit-length-code lengths
-    for(j = 0; j < nb; j++)
+    for(j = 0; j < nb; ++j)
     {
 	zip_NEEDBITS(3);
 	ll[zip_border[j]] = zip_GETBITS(3);
 	zip_DUMPBITS(3);
     }
-    for(; j < 19; j++)
+    for(; j < 19; ++j)
 	ll[zip_border[j]] = 0;
 
     // build decoding table for trees--single level, 7 bit lookup
     zip_bl = 7;
-    h = new zip_HuftBuild(ll, 19, 19, null, null, zip_bl);
+    h = zip_HuftBuild(ll, 19, 19, null, null, zip_bl);
     if(h.status != 0)
 	return -1;	// incomplete code set
 
@@ -594,7 +602,7 @@ var zip_inflate_dynamic = function(buff, off, size) {
 
     // build the decoding tables for literal/length and distance codes
     zip_bl = zip_lbits;
-    h = new zip_HuftBuild(ll, nl, 257, zip_cplens, zip_cplext, zip_bl);
+    h = zip_HuftBuild(ll, nl, 257, zip_cplens, zip_cplext, zip_bl);
     if(zip_bl == 0)	// no literals or lengths
 	h.status = 1;
     if(h.status != 0) {
@@ -605,10 +613,10 @@ var zip_inflate_dynamic = function(buff, off, size) {
     zip_tl = h.root;
     zip_bl = h.m;
 
-    for(i = 0; i < nd; i++)
+    for(i = 0; i < nd; ++i)
 	ll[i] = ll[i + nl];
     zip_bd = zip_dbits;
-    h = new zip_HuftBuild(ll, nd, 0, zip_cpdist, zip_cpdext, zip_bd);
+    h = zip_HuftBuild(ll, nd, 0, zip_cpdist, zip_cpdext, zip_bd);
     zip_td = h.root;
     zip_bd = h.m;
 
@@ -631,7 +639,7 @@ var zip_inflate_start = function() {
     var i;
 
     if(zip_slide == null)
-	zip_slide = new Array(2 * zip_WSIZE);
+	zip_slide = []; // new Array(2 * zip_WSIZE);
     zip_wp = 0;
     zip_bit_buf = 0;
     zip_bit_len = 0;
@@ -727,27 +735,24 @@ var zip_inflate_internal = function(buff, off, size) {
     return n;
 }
 
-var zip_inflate = function(str) {
+rawInflate = function(str) {
     var i, j;
 
     zip_inflate_start();
     zip_inflate_data = str;
     zip_inflate_pos = 0;
 
-    var buff = new Array(1024);
-    var aout = [];
-    while((i = zip_inflate_internal(buff, 0, buff.length)) > 0) {
-	var cbuf = new Array(i);
-	for(j = 0; j < i; j++){
-	    cbuf[j] = String.fromCharCode(buff[j]);
+    var buff = []; // new Array(1024);
+    var aout = [], aoutIndex = -1;
+    var _fromCharCode = String.fromCharCode;
+    while((i = zip_inflate_internal(buff, 0, 1024)) > 0) {
+	var cbuf = [];
+	for(j = 0; j < i; ++j){
+	    cbuf[j] = _fromCharCode(buff[j]);
 	}
-	aout[aout.length] = cbuf.join("");
+	aout[++aoutIndex] = cbuf.join("");
     }
     zip_inflate_data = null; // G.C.
     return aout.join("");
-}
-
-if (! window.RawDeflate) RawDeflate = {};
-RawDeflate.inflate = zip_inflate;
-
+};
 })();

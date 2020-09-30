@@ -2,8 +2,8 @@
 <head>
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <title>Test</title>
-<script src="rawinflate.js"></script>
-<script src="rawdeflate.js"></script>
+<script src="dist/rawinflate.min.js"></script>
+<script src="dist/rawdeflate.min.js"></script>
 <script>
 $ = function(id){ return document.getElementById(id) };
 
@@ -17,6 +17,8 @@ Base64 = {
   decode: function(s) { return atob(s); }
 };
 
+var deflater;
+/*
 var deflater = window.SharedWorker && new SharedWorker('rawdeflate.js');
 if (deflater) {
   deflater.port.addEventListener('message', done_deflating, false);
@@ -24,7 +26,7 @@ if (deflater) {
 } else if (window.Worker) {
   deflater = new Worker('rawdeflate.js');
   deflater.onmessage = done_deflating;
-}
+} */
 
 var t0;
 function done_deflating(e) {
@@ -45,7 +47,7 @@ function compress(s) {
     }
   } else {
     setTimeout(function() {
-      done_deflating({ data: deflate(s) });
+      done_deflating({ data: rawDeflate(s) });
     }, 0);
   }
 }
@@ -53,7 +55,7 @@ function compress(s) {
 function decompress(s) {
   setTimeout(function() {
     var t0 = new Date;
-    $('inflated').value = UTF8.decode(RawDeflate.inflate(Base64.decode(s)));
+    $('inflated').value = UTF8.decode(rawInflate(Base64.decode(s)));
     var t1 = new Date;
     update_sizes(t1 - t0, null);
   }, 0);

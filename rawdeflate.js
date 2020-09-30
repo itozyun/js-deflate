@@ -6,8 +6,7 @@
  */
 
 // if run as a web worker, respond to messages by deflating them
-var deflate = (function() {
-
+(function(parseInt) {
 /* Copyright (C) 1999 Masanao Izumo <iz@onicos.co.jp>
  * Version: 1.0.1
  * LastModified: Dec 25 1999
@@ -134,19 +133,23 @@ var zip_deflate_pos;
 /* objects (deflate) */
 
 function zip_DeflateCT() {
-    this.fc = 0; // frequency count or bit string
-    this.dl = 0; // father node in Huffman tree or length of bit string
-}
+    return {
+        fc : 0, // frequency count or bit string
+        dl : 0  // father node in Huffman tree or length of bit string
+    };
+};
 
 function zip_DeflateTreeDesc() {
-    this.dyn_tree = null;	// the dynamic tree
-    this.static_tree = null;	// corresponding static tree or NULL
-    this.extra_bits = null;	// extra bits for each code or NULL
-    this.extra_base = 0;	// base index for extra_bits
-    this.elems = 0;		// max number of elements in the tree
-    this.max_length = 0;	// max bit length for the codes
-    this.max_code = 0;		// largest code with non zero frequency
-}
+    return {
+        dyn_tree : null,// the dynamic tree
+        static_tree : null,// corresponding static tree or NULL
+        extra_bits : null,// extra bits for each code or NULL
+        extra_base : 0,// base index for extra_bits
+        elems : 0,// max number of elements in the tree
+        max_length : 0,// max bit length for the codes
+        max_code : 0// largest code with non zero frequency
+    };
+};
 
 /* Values for max_lazy_match, good_match and max_chain_length, depending on
  * the desired pack level (0..9). The values given below have been tuned to
@@ -154,18 +157,22 @@ function zip_DeflateTreeDesc() {
  * found for specific files.
  */
 function zip_DeflateConfiguration(a, b, c, d) {
-    this.good_length = a; // reduce lazy search above this match length
-    this.max_lazy = b;    // do not perform lazy search above this match length
-    this.nice_length = c; // quit search above this match length
-    this.max_chain = d;
-}
+    return {
+        good_length : a, // reduce lazy search above this match length
+        max_lazy : b,// do not perform lazy search above this match length
+        nice_length : c,// quit search above this match length
+        max_chain : d
+    };
+};
 
 function zip_DeflateBuffer() {
-    this.next = null;
-    this.len = 0;
-    this.ptr = new Array(zip_OUTBUFSIZ);
-    this.off = 0;
-}
+    return {
+        next : null,
+        len : 0,
+        ptr : [], // new Array(zip_OUTBUFSIZ),
+        off : 0
+    };
+};
 
 /* constant tables */
 var zip_extra_lbits = [
@@ -176,16 +183,16 @@ var zip_extra_blbits = [
     0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,2,3,7];
 var zip_bl_order = [16,17,18,0,8,7,9,6,10,5,11,4,12,3,13,2,14,1,15];
 var zip_configuration_table = [
-	new zip_DeflateConfiguration(0,    0,   0,    0),
-	new zip_DeflateConfiguration(4,    4,   8,    4),
-	new zip_DeflateConfiguration(4,    5,  16,    8),
-	new zip_DeflateConfiguration(4,    6,  32,   32),
-	new zip_DeflateConfiguration(4,    4,  16,   16),
-	new zip_DeflateConfiguration(8,   16,  32,   32),
-	new zip_DeflateConfiguration(8,   16, 128,  128),
-	new zip_DeflateConfiguration(8,   32, 128,  256),
-	new zip_DeflateConfiguration(32, 128, 258, 1024),
-	new zip_DeflateConfiguration(32, 258, 258, 4096)];
+	zip_DeflateConfiguration(0,    0,   0,    0),
+	zip_DeflateConfiguration(4,    4,   8,    4),
+	zip_DeflateConfiguration(4,    5,  16,    8),
+	zip_DeflateConfiguration(4,    6,  32,   32),
+	zip_DeflateConfiguration(4,    4,  16,   16),
+	zip_DeflateConfiguration(8,   16,  32,   32),
+	zip_DeflateConfiguration(8,   16, 128,  128),
+	zip_DeflateConfiguration(8,   32, 128,  256),
+	zip_DeflateConfiguration(32, 128, 258, 1024),
+	zip_DeflateConfiguration(32, 258, 258, 4096)];
 
 
 /* routines (deflate) */
@@ -207,37 +214,37 @@ function zip_deflate_start(level) {
 	return;
 
     zip_free_queue = zip_qhead = zip_qtail = null;
-    zip_outbuf = new Array(zip_OUTBUFSIZ);
-    zip_window = new Array(zip_window_size);
-    zip_d_buf = new Array(zip_DIST_BUFSIZE);
-    zip_l_buf = new Array(zip_INBUFSIZ + zip_INBUF_EXTRA);
-    zip_prev = new Array(1 << zip_BITS);
-    zip_dyn_ltree = new Array(zip_HEAP_SIZE);
-    for(i = 0; i < zip_HEAP_SIZE; i++)
-	zip_dyn_ltree[i] = new zip_DeflateCT();
-    zip_dyn_dtree = new Array(2*zip_D_CODES+1);
-    for(i = 0; i < 2*zip_D_CODES+1; i++)
-	zip_dyn_dtree[i] = new zip_DeflateCT();
-    zip_static_ltree = new Array(zip_L_CODES+2);
-    for(i = 0; i < zip_L_CODES+2; i++)
-	zip_static_ltree[i] = new zip_DeflateCT();
-    zip_static_dtree = new Array(zip_D_CODES);
-    for(i = 0; i < zip_D_CODES; i++)
-	zip_static_dtree[i] = new zip_DeflateCT();
-    zip_bl_tree = new Array(2*zip_BL_CODES+1);
-    for(i = 0; i < 2*zip_BL_CODES+1; i++)
-	zip_bl_tree[i] = new zip_DeflateCT();
-    zip_l_desc = new zip_DeflateTreeDesc();
-    zip_d_desc = new zip_DeflateTreeDesc();
-    zip_bl_desc = new zip_DeflateTreeDesc();
-    zip_bl_count = new Array(zip_MAX_BITS+1);
-    zip_heap = new Array(2*zip_L_CODES+1);
-    zip_depth = new Array(2*zip_L_CODES+1);
-    zip_length_code = new Array(zip_MAX_MATCH-zip_MIN_MATCH+1);
-    zip_dist_code = new Array(512);
-    zip_base_length = new Array(zip_LENGTH_CODES);
-    zip_base_dist = new Array(zip_D_CODES);
-    zip_flag_buf = new Array(parseInt(zip_LIT_BUFSIZE / 8));
+    zip_outbuf = []; // new Array(zip_OUTBUFSIZ);
+    zip_window = []; // new Array(zip_window_size);
+    zip_d_buf = []; // new Array(zip_DIST_BUFSIZE);
+    zip_l_buf = []; // new Array(zip_INBUFSIZ + zip_INBUF_EXTRA);
+    zip_prev = []; // new Array(1 << zip_BITS);
+    zip_dyn_ltree = []; //new Array(zip_HEAP_SIZE);
+    for(i = 0; i < zip_HEAP_SIZE; ++i)
+	zip_dyn_ltree[i] = zip_DeflateCT();
+    zip_dyn_dtree = []; // new Array(2*zip_D_CODES+1);
+    for(i = 0; i < 2*zip_D_CODES+1; ++i)
+	zip_dyn_dtree[i] = zip_DeflateCT();
+    zip_static_ltree = []; // new Array(zip_L_CODES+2);
+    for(i = 0; i < zip_L_CODES+2; ++i)
+	zip_static_ltree[i] = zip_DeflateCT();
+    zip_static_dtree = []; // new Array(zip_D_CODES);
+    for(i = 0; i < zip_D_CODES; ++i)
+	zip_static_dtree[i] = zip_DeflateCT();
+    zip_bl_tree = []; // new Array(2*zip_BL_CODES+1);
+    for(i = 0; i < 2*zip_BL_CODES+1; ++i)
+	zip_bl_tree[i] = zip_DeflateCT();
+    zip_l_desc = zip_DeflateTreeDesc();
+    zip_d_desc = zip_DeflateTreeDesc();
+    zip_bl_desc = zip_DeflateTreeDesc();
+    zip_bl_count = []; // new Array(zip_MAX_BITS+1);
+    zip_heap = []; // new Array(2*zip_L_CODES+1);
+    zip_depth = []; // new Array(2*zip_L_CODES+1);
+    zip_length_code = []; // new Array(zip_MAX_MATCH-zip_MIN_MATCH+1);
+    zip_dist_code = []; // new Array(512);
+    zip_base_length = []; // new Array(zip_LENGTH_CODES);
+    zip_base_dist = []; // new Array(zip_D_CODES);
+    zip_flag_buf = []; // new Array(parseInt(zip_LIT_BUFSIZE / 8));
 }
 
 function zip_deflate_end() {
@@ -279,7 +286,7 @@ function zip_new_queue() {
 	zip_free_queue = zip_free_queue.next;
     }
     else
-	p = new zip_DeflateBuffer();
+	p = zip_DeflateBuffer();
     p.next = null;
     p.len = p.off = 0;
 
@@ -361,8 +368,8 @@ function zip_SMALLER(tree, n, m) {
  * read string data
  */
 function zip_read_buff(buff, offset, n) {
-    var i;
-    for(i = 0; i < n && zip_deflate_pos < zip_deflate_data.length; i++)
+    var i, l;
+    for(i = 0, l = zip_deflate_data.length; i < n && zip_deflate_pos < l; ++i)
 	buff[offset + i] =
 	    zip_deflate_data.charCodeAt(zip_deflate_pos++) & 0xff;
     return i;
@@ -375,7 +382,7 @@ function zip_lm_init() {
     var j;
 
     /* Initialize the hash table. */
-    for(j = 0; j < zip_HASH_SIZE; j++)
+    for(j = 0; j < zip_HASH_SIZE; ++j)
 //	zip_head2(j, zip_NIL);
 	zip_prev[zip_WSIZE + j] = 0;
     /* prev will be initialized on the fly */
@@ -408,7 +415,7 @@ function zip_lm_init() {
      * not important since only literal bytes will be emitted.
      */
     zip_ins_h = 0;
-    for(j = 0; j < zip_MIN_MATCH - 1; j++) {
+    for(j = 0; j < zip_MIN_MATCH - 1; ++j) {
 //      UPDATE_HASH(ins_h, window[j]);
 	zip_ins_h = ((zip_ins_h << zip_H_SHIFT) ^ (zip_window[j] & 0xff)) & zip_HASH_MASK;
     }
@@ -815,7 +822,7 @@ function zip_qcopy(buff, off, buff_size) {
 	if(i > zip_qhead.len)
 	    i = zip_qhead.len;
 //      System.arraycopy(qhead.ptr, qhead.off, buff, off + n, i);
-	for(j = 0; j < i; j++)
+	for(j = 0; j < i; ++j)
 	    buff[off + n + j] = zip_qhead.ptr[zip_qhead.off + j];
 	
 	zip_qhead.off += i;
@@ -1094,7 +1101,7 @@ function zip_gen_bitlen(desc) { // the tree descriptor
    */
 function zip_gen_codes(tree,	// the tree to decorate
 		   max_code) {	// largest code with non zero frequency
-    var next_code = new Array(zip_MAX_BITS+1); // next code value for each bit length
+    var next_code = []; //new Array(zip_MAX_BITS+1); // next code value for each bit length
     var code = 0;		// running code value
     var bits;			// bit index
     var n;			// code index
@@ -1444,10 +1451,10 @@ function zip_flush_block(eof) { // true if this is the last block for a file
       // copy block
 /*
       p = &window[block_start];
-      for(i = 0; i < stored_len; i++)
+      for(i = 0; i < stored_len; ++i)
 	put_byte(p[i]);
 */
-	for(i = 0; i < stored_len; i++)
+	for(i = 0; i < stored_len; ++i)
 	    zip_put_byte(zip_window[zip_block_start + i]);
 
     } else if(static_lenb == opt_lenb) {
@@ -1637,36 +1644,37 @@ function zip_qoutbuf() {
 	    zip_qtail = zip_qtail.next = q;
 	q.len = zip_outcnt - zip_outoff;
 //      System.arraycopy(zip_outbuf, zip_outoff, q.ptr, 0, q.len);
-	for(i = 0; i < q.len; i++)
+	for(i = 0; i < q.len; ++i)
 	    q.ptr[i] = zip_outbuf[zip_outoff + i];
 	zip_outcnt = zip_outoff = 0;
     }
 }
 
-return function deflate(str, level) {
-    var i, j;
+rawDeflate = function(str, level) {
+    var i, j, undef;
 
     zip_deflate_data = str;
     zip_deflate_pos = 0;
-    if(typeof level == "undefined")
+    if(level == undef)
 	level = zip_DEFAULT_LEVEL;
     zip_deflate_start(level);
 
-    var buff = new Array(1024);
-    var aout = [];
-    while((i = zip_deflate_internal(buff, 0, buff.length)) > 0) {
-	var cbuf = new Array(i);
+    var buff = [];//new Array(1024);
+    var aout = [], aoutIndex = -1;
+    while((i = zip_deflate_internal(buff, 0, 1024)) > 0) {
+	var cbuf = [];
 	for(j = 0; j < i; j++){
 	    cbuf[j] = String.fromCharCode(buff[j]);
 	}
-	aout[aout.length] = cbuf.join("");
+	aout[++aoutIndex] = cbuf.join("");
     }
     zip_deflate_data = null; // G.C.
     return aout.join("");
 };
 
-})();
+})(Math.floor);
 
+/*
 onmessage = function worker(m) {
   postMessage(deflate(m.data, 9));
 };
@@ -1676,4 +1684,4 @@ onconnect = function sharedWorker(e) {
   port.onmessage = function(m) {
     port.postMessage(deflate(m.data, 9));
   };
-};
+}; */
