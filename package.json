@@ -1,0 +1,22 @@
+{
+  "name": "js-deflate",
+  "version": "1.0.0",
+  "description": "RFC 1951 raw deflate/inflate for JavaScript",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/itozyun/js-deflate.git"
+  },
+  "author": "itozyun <itozyun@gmail.com> (https://outcloud.blogspot.com/)",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/itozyun/js-deflate/issues"
+  },
+  "homepage": "https://github.com/itozyun/js-deflate#readme",
+  "devDependencies": {
+    "google-closure-compiler": "^20200927.0.0",
+    "gulp": "^4.0.2"
+  }
+}

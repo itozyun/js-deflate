@@ -4,6 +4,10 @@
  * original:
  * http://www.onicos.com/staff/iz/amuse/javascript/expert/inflate.txt
  */
+
+/** @define {boolean} */
+var RAWINFLATE_DEBUG = true;
+
 (function(){
 /* Copyright (C) 1999 Masanao Izumo <iz@onicos.co.jp>
  * Version: 1.0.0.1
@@ -484,7 +488,7 @@ var zip_inflate_fixed = function(buff, off, size) {
 	h = zip_HuftBuild(l, 288, 257, zip_cplens, zip_cplext,
 			      zip_fixed_bl);
 	if(h.status != 0) {
-	    alert("HufBuild error: "+h.status);
+	    RAWINFLATE_DEBUG && alert("HufBuild error: "+h.status);
 	    return -1;
 	}
 	zip_fixed_tl = h.root;
@@ -498,7 +502,7 @@ var zip_inflate_fixed = function(buff, off, size) {
 	h = zip_HuftBuild(l, 30, 0, zip_cpdist, zip_cpdext, zip_fixed_bd);
 	if(h.status > 1) {
 	    zip_fixed_tl = null;
-	    alert("HufBuild error: "+h.status);
+	    RAWINFLATE_DEBUG && alert("HufBuild error: "+h.status);
 	    return -1;
 	}
 	zip_fixed_td = h.root;
