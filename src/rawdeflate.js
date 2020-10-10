@@ -1662,9 +1662,10 @@ rawDeflate = function(str, level) {
     var buff = [];//new Array(1024);
     var aout = [], aoutIndex = -1;
     while((i = zip_deflate_internal(buff, 0, 1024)) > 0) {
-	var cbuf = [];
+    var cbuf = [];
+    var _fromCharCode = String.fromCharCode;
 	for(j = 0; j < i; ++j){
-	    cbuf[j] = String.fromCharCode(buff[j]);
+	    cbuf[j] = _fromCharCode(buff[j]);
 	}
 	aout[++aoutIndex] = cbuf.join("");
     }
