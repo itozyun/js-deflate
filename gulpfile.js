@@ -3,11 +3,11 @@ const gulp            = require('gulp'),
 
 gulp.task('dist', gulp.series(
     function(){
-        return gulp.src( [ './rawdeflate.js' ]
+        return gulp.src( [ './src/rawdeflate.js' ]
             ).pipe(
                 ClosureCompiler(
                     {
-                        externs           : [ './__externs.js' ],
+                        externs           : [ './src/__externs.js' ],
                         define            : [
                         ],
                         compilation_level : 'ADVANCED',
@@ -22,11 +22,11 @@ gulp.task('dist', gulp.series(
             ).pipe( gulp.dest( 'dist' ) );
     },
     function(){
-        return gulp.src( [ './rawinflate.js' ]
+        return gulp.src( [ './src/rawinflate.js' ]
             ).pipe(
                 ClosureCompiler(
                     {
-                        externs           : [ './__externs.js' ],
+                        externs           : [ './src/__externs.js' ],
                         define            : [
                             'RAWINFLATE_DEBUG=false'
                         ],
