@@ -159,8 +159,8 @@ function zip_HuftBuild(
 	p = b; pidx = 0;
 	i = n;
 	do {
-	    c[p[pidx]]++;	// assume all entries <= BMAX
-	    pidx++;
+	    ++c[p[pidx]];	// assume all entries <= BMAX
+	    ++pidx;
 	} while(--i > 0);
 	if(c[0] == n) {	// null input--all zero length codes
 	    //huft.root = null;
@@ -223,14 +223,14 @@ function zip_HuftBuild(
 	z = 0;			// ditto
 
 	// go through the bit lengths (k already is bits in shortest code)
-	for(; k <= g; k++) {
+	for(; k <= g; ++k) {
 	    a = c[k];
 	    while(a-- > 0) {
 		// here i is the Huffman code of length k bits for value p[pidx]
 		// make tables up to required level
 		while(k > w + lx[1 + h]) {
 		    w += lx[1 + h]; // add bits already decoded
-		    h++;
+		    ++h;
 
 		    // compute minimum size table less than or equal to *m bits
 		    z = (z = g - w) > mm ? mm : z; // upper limit
@@ -251,7 +251,7 @@ function zip_HuftBuild(
 
 		    // allocate and link in new table
 		    q = []; // new Array(z);
-		    for(o = 0; o < z; o++) {
+		    for(o = 0; o < z; ++o) {
 			q[o] = zip_HuftNode();
 		    }
 

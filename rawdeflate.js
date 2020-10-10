@@ -538,18 +538,18 @@ function zip_fill_window() {
 //	Assert(window_size == (ulg)2*WSIZE, "no sliding with BIG_MEM");
 
 //	System.arraycopy(window, WSIZE, window, 0, WSIZE);
-	for(n = 0; n < zip_WSIZE; n++)
+	for(n = 0; n < zip_WSIZE; ++n)
 	    zip_window[n] = zip_window[n + zip_WSIZE];
       
 	zip_match_start -= zip_WSIZE;
 	zip_strstart    -= zip_WSIZE; /* we now have strstart >= MAX_DIST: */
 	zip_block_start -= zip_WSIZE;
 
-	for(n = 0; n < zip_HASH_SIZE; n++) {
+	for(n = 0; n < zip_HASH_SIZE; ++n) {
 	    m = zip_head1(n);
 	    zip_head2(n, m >= zip_WSIZE ? m - zip_WSIZE : zip_NIL);
 	}
-	for(n = 0; n < zip_WSIZE; n++) {
+	for(n = 0; n < zip_WSIZE; ++n) {
 	    /* If n is not on any hash chain, prev[n] is garbage but
 	     * its value will never be used.
 	     */
@@ -610,7 +610,7 @@ function zip_deflate_fast() {
 	    if(zip_match_length <= zip_max_lazy_match) {
 		zip_match_length--; // string at strstart already in hash table
 		do {
-		    zip_strstart++;
+		    ++zip_strstart;
 		    zip_INSERT_STRING();
 		    /* strstart never exceeds WSIZE-MAX_MATCH, so there are
 		     * always MIN_MATCH bytes ahead. If lookahead < MIN_MATCH
@@ -618,7 +618,7 @@ function zip_deflate_fast() {
 		     * the next lookahead bytes will be emitted as literals.
 		     */
 		} while(--zip_match_length != 0);
-		zip_strstart++;
+		++zip_strstart;
 	    } else {
 		zip_strstart += zip_match_length;
 		zip_match_length = 0;
@@ -635,7 +635,7 @@ function zip_deflate_fast() {
 	    /* No match, output a literal byte */
 	    flush = zip_ct_tally(0, zip_window[zip_strstart] & 0xff);
 	    zip_lookahead--;
-	    zip_strstart++;
+	    ++zip_strstart;
 	}
 	if(flush) {
 	    zip_flush_block(0);
@@ -704,7 +704,7 @@ function zip_deflate_better() {
 	    zip_lookahead -= zip_prev_length - 1;
 	    zip_prev_length -= 2;
 	    do {
-		zip_strstart++;
+		++zip_strstart;
 		zip_INSERT_STRING();
 		/* strstart never exceeds WSIZE-MAX_MATCH, so there are
 		 * always MIN_MATCH bytes ahead. If lookahead < MIN_MATCH
@@ -714,7 +714,7 @@ function zip_deflate_better() {
 	    } while(--zip_prev_length != 0);
 	    zip_match_available = 0;
 	    zip_match_length = zip_MIN_MATCH - 1;
-	    zip_strstart++;
+	    ++zip_strstart;
 	    if(flush) {
 		zip_flush_block(0);
 		zip_block_start = zip_strstart;
@@ -728,14 +728,14 @@ function zip_deflate_better() {
 		zip_flush_block(0);
 		zip_block_start = zip_strstart;
 	    }
-	    zip_strstart++;
+	    ++zip_strstart;
 	    zip_lookahead--;
 	} else {
 	    /* There is no previous match to compare with, wait for
 	     * the next step to decide.
 	     */
 	    zip_match_available = 1;
-	    zip_strstart++;
+	    ++zip_strstart;
 	    zip_lookahead--;
 	}
 
@@ -844,7 +844,7 @@ function zip_qcopy(buff, off, buff_size) {
 	if(i > zip_outcnt - zip_outoff)
 	    i = zip_outcnt - zip_outoff;
 	// System.arraycopy(outbuf, outoff, buff, off + n, i);
-	for(j = 0; j < i; j++)
+	for(j = 0; j < i; ++j)
 	    buff[off + n + j] = zip_outbuf[zip_outoff + j];
 	zip_outoff += i;
 	n += i;
@@ -894,9 +894,9 @@ function zip_ct_init() {
 
     // Initialize the mapping length (0..255) -> length code (0..28)
     length = 0;
-    for(code = 0; code < zip_LENGTH_CODES-1; code++) {
+    for(code = 0; code < zip_LENGTH_CODES-1; ++code) {
 	zip_base_length[code] = length;
-	for(n = 0; n < (1<<zip_extra_lbits[code]); n++)
+	for(n = 0; n < (1<<zip_extra_lbits[code]); ++n)
 	    zip_length_code[length++] = code;
     }
     // Assert (length == 256, "ct_init: length != 256");
@@ -909,29 +909,29 @@ function zip_ct_init() {
 
     /* Initialize the mapping dist (0..32K) -> dist code (0..29) */
     dist = 0;
-    for(code = 0 ; code < 16; code++) {
+    for(code = 0 ; code < 16; ++code) {
 	zip_base_dist[code] = dist;
-	for(n = 0; n < (1<<zip_extra_dbits[code]); n++) {
+	for(n = 0; n < (1<<zip_extra_dbits[code]); ++n) {
 	    zip_dist_code[dist++] = code;
 	}
     }
     // Assert (dist == 256, "ct_init: dist != 256");
     dist >>= 7; // from now on, all distances are divided by 128
-    for( ; code < zip_D_CODES; code++) {
+    for( ; code < zip_D_CODES; ++code) {
 	zip_base_dist[code] = dist << 7;
-	for(n = 0; n < (1<<(zip_extra_dbits[code]-7)); n++)
+	for(n = 0; n < (1<<(zip_extra_dbits[code]-7)); ++n)
 	    zip_dist_code[256 + dist++] = code;
     }
     // Assert (dist == 256, "ct_init: 256+dist != 512");
 
     // Construct the codes of the static literal tree
-    for(bits = 0; bits <= zip_MAX_BITS; bits++)
+    for(bits = 0; bits <= zip_MAX_BITS; ++bits)
 	zip_bl_count[bits] = 0;
     n = 0;
-    while(n <= 143) { zip_static_ltree[n++].dl = 8; zip_bl_count[8]++; }
-    while(n <= 255) { zip_static_ltree[n++].dl = 9; zip_bl_count[9]++; }
-    while(n <= 279) { zip_static_ltree[n++].dl = 7; zip_bl_count[7]++; }
-    while(n <= 287) { zip_static_ltree[n++].dl = 8; zip_bl_count[8]++; }
+    while(n <= 143) { zip_static_ltree[n++].dl = 8; ++zip_bl_count[8]; }
+    while(n <= 255) { zip_static_ltree[n++].dl = 9; ++zip_bl_count[9]; }
+    while(n <= 279) { zip_static_ltree[n++].dl = 7; ++zip_bl_count[7]; }
+    while(n <= 287) { zip_static_ltree[n++].dl = 8; ++zip_bl_count[8]; }
     /* Codes 286 and 287 do not exist, but we must include them in the
      * tree construction to get a canonical Huffman tree (longest code
      * all ones)
@@ -939,7 +939,7 @@ function zip_ct_init() {
     zip_gen_codes(zip_static_ltree, zip_L_CODES + 1);
 
     /* The static distance tree is trivial: */
-    for(n = 0; n < zip_D_CODES; n++) {
+    for(n = 0; n < zip_D_CODES; ++n) {
 	zip_static_dtree[n].dl = 5;
 	zip_static_dtree[n].fc = zip_bi_reverse(n, 5);
     }
@@ -955,9 +955,9 @@ function zip_init_block() {
     var n; // iterates over tree elements
 
     // Initialize the trees.
-    for(n = 0; n < zip_L_CODES;  n++) zip_dyn_ltree[n].fc = 0;
-    for(n = 0; n < zip_D_CODES;  n++) zip_dyn_dtree[n].fc = 0;
-    for(n = 0; n < zip_BL_CODES; n++) zip_bl_tree[n].fc = 0;
+    for(n = 0; n < zip_L_CODES;  ++n) zip_dyn_ltree[n].fc = 0;
+    for(n = 0; n < zip_D_CODES;  ++n) zip_dyn_dtree[n].fc = 0;
+    for(n = 0; n < zip_BL_CODES; ++n) zip_bl_tree[n].fc = 0;
 
     zip_dyn_ltree[zip_END_BLOCK].fc = 1;
     zip_opt_len = zip_static_len = 0;
@@ -1022,7 +1022,7 @@ function zip_gen_bitlen(desc) { // the tree descriptor
     var f;		// frequency
     var overflow = 0;	// number of elements with bit length too large
 
-    for(bits = 0; bits <= zip_MAX_BITS; bits++)
+    for(bits = 0; bits <= zip_MAX_BITS; ++bits)
 	zip_bl_count[bits] = 0;
 
     /* In a first pass, compute the optimal bit lengths (which may
@@ -1030,12 +1030,12 @@ function zip_gen_bitlen(desc) { // the tree descriptor
      */
     tree[zip_heap[zip_heap_max]].dl = 0; // root of the heap
 
-    for(h = zip_heap_max + 1; h < zip_HEAP_SIZE; h++) {
+    for(h = zip_heap_max + 1; h < zip_HEAP_SIZE; ++h) {
 	n = zip_heap[h];
 	bits = tree[tree[n].dl].dl + 1;
 	if(bits > max_length) {
 	    bits = max_length;
-	    overflow++;
+	    ++overflow;
 	}
 	tree[n].dl = bits;
 	// We overwrite tree[n].dl which is no longer needed
@@ -1043,7 +1043,7 @@ function zip_gen_bitlen(desc) { // the tree descriptor
 	if(n > max_code)
 	    continue; // not a leaf node
 
-	zip_bl_count[bits]++;
+	++zip_bl_count[bits];
 	xbits = 0;
 	if(n >= base)
 	    xbits = extra[n - base];
@@ -1109,7 +1109,7 @@ function zip_gen_codes(tree,	// the tree to decorate
     /* The distribution counts are first used to generate the code values
      * without bit reversal.
      */
-    for(bits = 1; bits <= zip_MAX_BITS; bits++) {
+    for(bits = 1; bits <= zip_MAX_BITS; ++bits) {
 	code = ((code + zip_bl_count[bits-1]) << 1);
 	next_code[bits] = code;
     }
@@ -1121,7 +1121,7 @@ function zip_gen_codes(tree,	// the tree to decorate
 //	    "inconsistent bit counts");
 //    Tracev((stderr,"\ngen_codes: max_code %d ", max_code));
 
-    for(n = 0; n <= max_code; n++) {
+    for(n = 0; n <= max_code; ++n) {
 	var len = tree[n].dl;
 	if(len == 0)
 	    continue;
@@ -1156,7 +1156,7 @@ function zip_build_tree(desc) { // the tree descriptor
     zip_heap_len = 0;
     zip_heap_max = zip_HEAP_SIZE;
 
-    for(n = 0; n < elems; n++) {
+    for(n = 0; n < elems; ++n) {
 	if(tree[n].fc != 0) {
 	    zip_heap[++zip_heap_len] = max_code = n;
 	    zip_depth[n] = 0;
@@ -1248,7 +1248,7 @@ function zip_scan_tree(tree,// the tree to be scanned
     }
     tree[max_code + 1].dl = 0xffff; // guard
 
-    for(n = 0; n <= max_code; n++) {
+    for(n = 0; n <= max_code; ++n) {
 	curlen = nextlen;
 	nextlen = tree[n + 1].dl;
 	if(++count < max_count && curlen == nextlen)
@@ -1257,12 +1257,12 @@ function zip_scan_tree(tree,// the tree to be scanned
 	    zip_bl_tree[curlen].fc += count;
 	else if(curlen != 0) {
 	    if(curlen != prevlen)
-		zip_bl_tree[curlen].fc++;
-	    zip_bl_tree[zip_REP_3_6].fc++;
+		++zip_bl_tree[curlen].fc;
+	    ++zip_bl_tree[zip_REP_3_6].fc;
 	} else if(count <= 10)
-	    zip_bl_tree[zip_REPZ_3_10].fc++;
+	    ++zip_bl_tree[zip_REPZ_3_10].fc;
 	else
-	    zip_bl_tree[zip_REPZ_11_138].fc++;
+	    ++zip_bl_tree[zip_REPZ_11_138].fc;
 	count = 0; prevlen = curlen;
 	if(nextlen == 0) {
 	    max_count = 138;
@@ -1297,7 +1297,7 @@ function zip_send_tree(tree, // the tree to be scanned
       min_count = 3;
     }
 
-    for(n = 0; n <= max_code; n++) {
+    for(n = 0; n <= max_code; ++n) {
 	curlen = nextlen;
 	nextlen = tree[n+1].dl;
 	if(++count < max_count && curlen == nextlen) {
@@ -1381,7 +1381,7 @@ function zip_send_all_trees(lcodes, dcodes, blcodes) { // number of codes for ea
     zip_send_bits(lcodes-257, 5); // not +255 as stated in appnote.txt
     zip_send_bits(dcodes-1,   5);
     zip_send_bits(blcodes-4,  4); // not -3 as stated in appnote.txt
-    for(rank = 0; rank < blcodes; rank++) {
+    for(rank = 0; rank < blcodes; ++rank) {
 //      Tracev((stderr, "\nbl code %2d ", bl_order[rank]));
 	zip_send_bits(zip_bl_tree[zip_bl_order[rank]].dl, 3);
     }
@@ -1484,7 +1484,7 @@ function zip_ct_tally(
     zip_l_buf[zip_last_lit++] = lc;
     if(dist == 0) {
 	// lc is the unmatched char
-	zip_dyn_ltree[lc].fc++;
+	++zip_dyn_ltree[lc].fc;
     } else {
 	// Here, lc is the match length - MIN_MATCH
 	dist--;		    // dist = match distance - 1
@@ -1492,8 +1492,8 @@ function zip_ct_tally(
 //	     (ush)lc <= (ush)(MAX_MATCH-MIN_MATCH) &&
 //	     (ush)D_CODE(dist) < (ush)D_CODES,  "ct_tally: bad match");
 
-	zip_dyn_ltree[zip_length_code[lc]+zip_LITERALS+1].fc++;
-	zip_dyn_dtree[zip_D_CODE(dist)].fc++;
+	++zip_dyn_ltree[zip_length_code[lc]+zip_LITERALS+1].fc;
+	++zip_dyn_dtree[zip_D_CODE(dist)].fc;
 
 	zip_d_buf[zip_last_dist++] = dist;
 	zip_flags |= zip_flag_bit;
@@ -1513,7 +1513,7 @@ function zip_ct_tally(
 	var in_length = zip_strstart - zip_block_start;
 	var dcode;
 
-	for(dcode = 0; dcode < zip_D_CODES; dcode++) {
+	for(dcode = 0; dcode < zip_D_CODES; ++dcode) {
 	    out_length += zip_dyn_dtree[dcode].fc * (5 + zip_extra_dbits[dcode]);
 	}
 	out_length >>= 3;
@@ -1663,12 +1663,13 @@ rawDeflate = function(str, level) {
     var aout = [], aoutIndex = -1;
     while((i = zip_deflate_internal(buff, 0, 1024)) > 0) {
 	var cbuf = [];
-	for(j = 0; j < i; j++){
+	for(j = 0; j < i; ++j){
 	    cbuf[j] = String.fromCharCode(buff[j]);
 	}
 	aout[++aoutIndex] = cbuf.join("");
     }
     zip_deflate_data = null; // G.C.
+    zip_deflate_end();
     return aout.join("");
 };
 
