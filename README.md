@@ -2,6 +2,10 @@
 
 forked from [johan/js-deflate](https://github.com/johan/js-deflate).
 
+## demo
+
+[test](https://itozyun.github.io/js-deflate/)
+
 ## How to minify
 
 1. [dist > rawdeflate.min.js](./dist/rawdeflate.min.js)
